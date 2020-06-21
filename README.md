@@ -1,2 +1,2 @@
 # GoFlare
-Basic cloudflare api functions in Go
+A simple Go wrapper/library for the CloudFlare zone api
