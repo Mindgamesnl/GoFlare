@@ -5,7 +5,7 @@ import "time"
 type ZoneDnsAddedResponse struct {
 	Success  bool          `json:"success"`
 	Errors   []Error       `json:"errors"`
-	Result []struct {
+	Result struct {
 		ID         string    `json:"id"`
 		Type       string    `json:"type"`
 		Name       string    `json:"name"`

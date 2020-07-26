@@ -74,6 +74,13 @@ func (cf CloudFlare) AddDns(domain string, recordType string, content string, na
 		"content": content,
 		"proxied": strconv.FormatBool(proxied),
 	})
+
+	return response
+}
+
+func (cf CloudFlare) ListWorkers(profile UserProfile) WorkerListResponse {
+	response := WorkerListResponse{}
+	cf.doRequest("GET", "https://api.cloudflare.com/client/v4/accounts/" + profile.Result.ID + "/workers/scripts", response,emptyMap)
 	return response
 }
 
