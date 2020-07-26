@@ -35,6 +35,12 @@ func (cf CloudFlare) GetZoneInfo(domain string) ZoneInfoResponse {
 	return response
 }
 
+func (cf CloudFlare) GetUserProfile() UserProfile {
+	response := UserProfile{}
+	cf.doBasicRequest("GET", "https://api.cloudflare.com/client/v4/user", response)
+	return response
+}
+
 func (cf CloudFlare) RegisterZone(domain string) ZoneRegisterResponse {
 	response := ZoneRegisterResponse{}
 	cf.doHeaderRequest("POST", "https://api.cloudflare.com/client/v4/zones", response, map[string]string{
