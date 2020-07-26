@@ -1,7 +1,9 @@
 package cloudflare
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -28,13 +30,13 @@ func NewCloudFlare(email string, key string) CloudFlare {
 
 func (cf CloudFlare) GetZoneInfo(domain string) ZoneInfoResponse {
 	response := ZoneInfoResponse{}
-	cf.doRequest("GET", "https://api.cloudflare.com/client/v4/zones?name=" + domain, response, emptyMap)
+	cf.doBasicRequest("GET", "https://api.cloudflare.com/client/v4/zones?name=" + domain, response)
 	return response
 }
 
 func (cf CloudFlare) RegisterZone(domain string) ZoneRegisterResponse {
 	response := ZoneRegisterResponse{}
-	cf.doRequest("POST", "https://api.cloudflare.com/client/v4/zones", response, map[string]string{
+	cf.doHeaderRequest("POST", "https://api.cloudflare.com/client/v4/zones", response, map[string]string{
 		"name": domain,
 	})
 	return response
@@ -42,13 +44,13 @@ func (cf CloudFlare) RegisterZone(domain string) ZoneRegisterResponse {
 
 func (cf CloudFlare) DeleteZone(domain string) ZoneDeleteResponse {
 	response := ZoneDeleteResponse{}
-	cf.doRequest("DELETE", "https://api.cloudflare.com/client/v4/zones/" + domain, response, emptyMap)
+	cf.doBasicRequest("DELETE", "https://api.cloudflare.com/client/v4/zones/" + domain, response)
 	return response
 }
 
 func (cf CloudFlare) SetZoneDevelopmentMode(domain string, inDevelopment bool) ZoneDevModeResponse {
 	response := ZoneDevModeResponse{}
-	cf.doRequest("PATH", "https://api.cloudflare.com/client/v4/zones/" + domain + "/settings/development_mode", response, map[string]string{
+	cf.doHeaderRequest("PATH", "https://api.cloudflare.com/client/v4/zones/" + domain + "/settings/development_mode", response, map[string]string{
 		"value": strconv.FormatBool(inDevelopment),
 	})
 	return response
@@ -56,19 +58,19 @@ func (cf CloudFlare) SetZoneDevelopmentMode(domain string, inDevelopment bool) Z
 
 func (cf CloudFlare) GetZoneDevelopmentMode(domain string) ZoneDevModeResponse {
 	response := ZoneDevModeResponse{}
-	cf.doRequest("GET", "https://api.cloudflare.com/client/v4/zones/" + domain + "/settings/development_mode", response, emptyMap)
+	cf.doBasicRequest("GET", "https://api.cloudflare.com/client/v4/zones/" + domain + "/settings/development_mode", response)
 	return response
 }
 
 func (cf CloudFlare) ZoneDnsList(domain string) ZoneDnsList {
 	response := ZoneDnsList{}
-	cf.doRequest("GET", "https://api.cloudflare.com/client/v4/zones/" + domain + "/dns_records", response, emptyMap)
+	cf.doBasicRequest("GET", "https://api.cloudflare.com/client/v4/zones/" + domain + "/dns_records", response)
 	return response
 }
 
 func (cf CloudFlare) AddDns(domain string, recordType string, content string, name string, proxied bool) ZoneDnsAddedResponse {
 	response := ZoneDnsAddedResponse{}
-	cf.doRequest("POST", "https://api.cloudflare.com/client/v4/zones/" + domain + "/dns_records", response, map[string]string{
+	cf.doHeaderRequest("POST", "https://api.cloudflare.com/client/v4/zones/" + domain + "/dns_records", response, map[string]string{
 		"type": recordType,
 		"name": name,
 		"content": content,
@@ -80,13 +82,25 @@ func (cf CloudFlare) AddDns(domain string, recordType string, content string, na
 
 func (cf CloudFlare) ListWorkers(profile UserProfile) WorkerListResponse {
 	response := WorkerListResponse{}
-	cf.doRequest("GET", "https://api.cloudflare.com/client/v4/accounts/" + profile.Result.ID + "/workers/scripts", response,emptyMap)
+	cf.doBasicRequest("GET", "https://api.cloudflare.com/client/v4/accounts/" + profile.Result.ID + "/workers/scripts", response)
 	return response
 }
 
-func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, values map[string]string) {
+func (cf CloudFlare) doBasicRequest(how string, endpoint string, what interface{}) {
+	cf.doRequest(how, endpoint, what, emptyMap, nil)
+}
+
+func (cf CloudFlare) doHeaderRequest(how string, endpoint string, what interface{}, headers map[string]string) {
+	cf.doRequest(how, endpoint, what, headers, nil)
+}
+
+func (cf CloudFlare) doUploadRequest(how string, endpoint string, what interface{}, headers map[string]string, body string) {
+	cf.doRequest(how, endpoint, what, headers, bytes.NewBuffer([]byte(body)))
+}
+
+func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, values map[string]string, body io.Reader) {
 	client := http.Client{}
-	request, err := http.NewRequest(how, endpoint, nil)
+	request, err := http.NewRequest(how, endpoint, body)
 	request.Header.Add("X-Auth-Key", cf.ApiKey)
 	request.Header.Add("X-Auth-Email", cf.Email)
 
