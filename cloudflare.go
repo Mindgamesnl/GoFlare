@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -86,6 +87,20 @@ func (cf CloudFlare) ListWorkers(profile UserProfile) WorkerListResponse {
 	return response
 }
 
+func (cf CloudFlare) UploadWorker(profile UserProfile, worker Worker, javaScript string) WorkerUploadResponse {
+	response := WorkerUploadResponse{}
+	cf.doUploadRequest("PUT", "https://api.cloudflare.com/client/v4/accounts/" + profile.Result.ID + "/workers/scripts/" + worker.Name, response, map[string]string{
+		"Content-Type": "application/javascript",
+	}, javaScript)
+	return response
+}
+
+func (cf CloudFlare) DownloadWorker(profile UserProfile, worker Worker) string {
+	return cf.doRequest("GET", "https://api.cloudflare.com/client/v4/accounts/" + profile.Result.ID + "/workers/scripts/" + worker.Name, nil, map[string]string{
+		"Accept": "application/javascript",
+	}, nil)
+}
+
 func (cf CloudFlare) doBasicRequest(how string, endpoint string, what interface{}) {
 	cf.doRequest(how, endpoint, what, emptyMap, nil)
 }
@@ -98,7 +113,7 @@ func (cf CloudFlare) doUploadRequest(how string, endpoint string, what interface
 	cf.doRequest(how, endpoint, what, headers, bytes.NewBuffer([]byte(body)))
 }
 
-func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, values map[string]string, body io.Reader) {
+func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, values map[string]string, body io.Reader) string {
 	client := http.Client{}
 	request, err := http.NewRequest(how, endpoint, body)
 	request.Header.Add("X-Auth-Key", cf.ApiKey)
@@ -117,5 +132,10 @@ func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, va
 		log.Fatalln(err)
 	}
 
-	json.NewDecoder(resp.Body).Decode(&what)
+	if what != nil {
+		json.NewDecoder(resp.Body).Decode(&what)
+	}
+
+	resposneBody, _ := ioutil.ReadAll(resp.Body)
+	return string(resposneBody)
 }
