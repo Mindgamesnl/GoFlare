@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -121,18 +122,32 @@ func (cf CloudFlare) doUploadRequest(how string, endpoint string, what interface
 
 func (cf CloudFlare) doRequest(how string, endpoint string, what interface{}, values map[string]string, body io.Reader) string {
 	client := http.Client{}
-	request, err := http.NewRequest(how, endpoint, body)
+	var request *http.Request
+
+	if body != nil {
+		request, _ = http.NewRequest(how, endpoint, body)
+	} else if len(values) > 0 {
+		jsonString, _ := json.Marshal(values)
+		request, _ = http.NewRequest(how, endpoint, bytes.NewBuffer(jsonString))
+	}
+
+	if request == nil {
+		request, _ = http.NewRequest(how, endpoint, body)
+	}
+
 	request.Header.Add("Authorization", "Bearer " + cf.ApiKey)
 	request.Header.Add("X-Auth-Key", cf.ApiKey)
 	request.Header.Add("X-Auth-Email", cf.Email)
+	request.Header.Add("Content-Type", "application/json")
+
+	urlValues := url.Values{}
+
 
 	for s := range values {
-		request.PostForm.Add(s, values[s])
+		urlValues.Set(s, values[s])
 	}
 
-	if err != nil {
-		log.Fatalln(err)
-	}
+	request.PostForm = urlValues
 
 	resp, err := client.Do(request)
 	if err != nil {
